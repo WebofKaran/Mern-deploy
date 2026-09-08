@@ -7,18 +7,26 @@ const app = express();
 app.use(cors());
 app.use(express.json());
 
-const mongoUri = process.env.MONGO_URI || 'mongodb://mongo:27017/mern_deploy_lab';
+const mongoUri = process.env.MONGO_URI;
+
+if (!mongoUri) {
+  console.error('MONGO_URI is not configured. Add your MongoDB Atlas connection string.');
+  process.exit(1);
+}
 
 mongoose.connect(mongoUri)
-  .then(() => console.log('MongoDB connected'))
-  .catch(err => console.log('MongoDB connection error:', err.message));
+  .then(() => console.log('MongoDB Atlas connected successfully'))
+  .catch(err => {
+    console.error('MongoDB Atlas connection error:', err.message);
+    process.exit(1);
+  });
 
 app.get('/api/health', (req, res) => {
-  res.json({ status: 'healthy', stack: 'MERN', timestamp: new Date() });
+  res.json({ status: 'healthy', database: 'MongoDB Atlas', stack: 'MERN', timestamp: new Date() });
 });
 
 app.get('/api/technologies', (req, res) => {
-  res.json(['MongoDB', 'Express', 'React', 'Node.js', 'Docker', 'Jenkins']);
+  res.json(['MongoDB Atlas', 'Express', 'React', 'Node.js', 'Docker', 'Jenkins']);
 });
 
 const PORT = process.env.PORT || 5000;
