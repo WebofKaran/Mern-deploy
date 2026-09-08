@@ -2,34 +2,40 @@ import React, { useEffect, useRef, useState } from 'react';
 import { createRoot } from 'react-dom/client';
 import './style.css';
 
-const stages = [
-  ['01', 'Checkout', 'GitHub'],
-  ['02', 'Install', 'Node modules'],
-  ['03', 'Verify', 'API health'],
-  ['04', 'Build', 'React production'],
-  ['05', 'Release', 'Nginx']
+const pipeline = [
+  { id: '01', title: 'GitHub', sub: 'Push source', code: 'git push origin main' },
+  { id: '02', title: 'Jenkins', sub: 'Build + verify', code: 'npm run build' },
+  { id: '03', title: 'React', sub: 'Production bundle', code: 'vite build' },
+  { id: '04', title: 'Nginx', sub: 'Serve instantly', code: 'release → live' },
 ];
 
-const stack = [
-  { mark: 'M', name: 'MongoDB', detail: 'Persistent data layer', tone: 'green' },
-  { mark: 'E', name: 'Express', detail: 'REST API layer', tone: 'orange' },
-  { mark: 'R', name: 'React', detail: 'Interactive experience', tone: 'blue' },
-  { mark: 'N', name: 'Node.js', detail: 'Runtime & services', tone: 'lime' }
+const specs = [
+  ['54 min', 'Flight time'],
+  ['24 km', 'Transmission range'],
+  ['8K HDR', 'Cinematic camera'],
+  ['360°', 'Obstacle intelligence'],
 ];
+
+const Icon = ({ children, size = 18 }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+    {children}
+  </svg>
+);
 
 function App() {
   const [api, setApi] = useState({ state: 'Checking', data: null });
+  const [activeStage, setActiveStage] = useState(-1);
   const [running, setRunning] = useState(false);
-  const [active, setActive] = useState(-1);
-  const [mode, setMode] = useState('overview');
-  const [cursor, setCursor] = useState({ x: 50, y: 18 });
+  const [activeSpec, setActiveSpec] = useState(0);
+  const [menuOpen, setMenuOpen] = useState(false);
+  const [scroll, setScroll] = useState(0);
   const timer = useRef(null);
 
   const checkApi = async () => {
     setApi({ state: 'Checking', data: null });
     try {
-      const response = await fetch('/api/health');
-      if (!response.ok) throw new Error('Unhealthy');
+      const response = await fetch('/api/health', { cache: 'no-store' });
+      if (!response.ok) throw new Error('API unavailable');
       const data = await response.json();
       setApi({ state: 'Online', data });
     } catch {
@@ -39,116 +45,201 @@ function App() {
 
   useEffect(() => {
     checkApi();
-    return () => clearTimeout(timer.current);
+    const onScroll = () => {
+      const max = document.documentElement.scrollHeight - window.innerHeight;
+      setScroll(max > 0 ? window.scrollY / max : 0);
+    };
+    window.addEventListener('scroll', onScroll, { passive: true });
+    onScroll();
+    return () => {
+      window.removeEventListener('scroll', onScroll);
+      clearTimeout(timer.current);
+    };
   }, []);
 
   const runPipeline = async () => {
     if (running) return;
     setRunning(true);
-    setActive(-1);
-    for (let i = 0; i < stages.length; i++) {
-      await new Promise(resolve => { timer.current = setTimeout(resolve, 700); });
-      setActive(i);
+    setActiveStage(-1);
+    for (let i = 0; i < pipeline.length; i += 1) {
+      await new Promise(resolve => { timer.current = setTimeout(resolve, 850); });
+      setActiveStage(i);
     }
     setRunning(false);
     checkApi();
   };
 
-  const scrollTo = id => document.getElementById(id)?.scrollIntoView({ behavior: 'smooth' });
+  const scrollTo = id => {
+    setMenuOpen(false);
+    document.getElementById(id)?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  };
 
   return (
-    <div className="app" onMouseMove={e => setCursor({ x: (e.clientX / window.innerWidth) * 100, y: (e.clientY / window.innerHeight) * 100 })}>
-      <div className="cursor-glow" style={{ '--x': `${cursor.x}%`, '--y': `${cursor.y}%` }} />
+    <div className="app">
+      <div className="scroll-progress" style={{ transform: `scaleX(${scroll})` }} />
+      <div className="ambient ambient-a" />
+      <div className="ambient ambient-b" />
 
-      <header className="nav-wrap">
-        <nav className="nav glass">
-          <button className="wordmark" onClick={() => scrollTo('top')} aria-label="Back to top"><span className="wordmark-dot" />MERIDIEN</button>
-          <div className="nav-center">
-            <button onClick={() => scrollTo('stack')}>Stack</button>
-            <button onClick={() => scrollTo('flow')}>Pipeline</button>
-            <button onClick={() => scrollTo('status')}>Status</button>
+      <header className="site-header">
+        <nav className="nav">
+          <button className="brand" onClick={() => scrollTo('top')} aria-label="AERON home">
+            <span className="brand-symbol"><span /><span /></span>
+            <span>AERON</span>
+          </button>
+
+          <div className={`nav-links ${menuOpen ? 'open' : ''}`}>
+            <button onClick={() => scrollTo('aircraft')}>Aircraft</button>
+            <button onClick={() => scrollTo('intelligence')}>Intelligence</button>
+            <button onClick={() => scrollTo('deployment')}>Deployment</button>
           </div>
-          <button className="nav-cta" onClick={runPipeline}>{running ? 'Deploying' : 'Run deploy'} <span>↗</span></button>
+
+          <button className="nav-action" onClick={() => scrollTo('preorder')}>
+            Pre-order <Icon size={15}><path d="M5 12h13"/><path d="m13 6 6 6-6 6"/></Icon>
+          </button>
+          <button className="menu-toggle" onClick={() => setMenuOpen(v => !v)} aria-label="Toggle menu">
+            <span /><span />
+          </button>
         </nav>
       </header>
 
       <main id="top">
-        <section className="hero section-shell">
-          <div className="hero-copy reveal">
-            <div className="kicker"><span className="live-dot" /> CONTINUOUS DELIVERY / LIVE</div>
-            <h1>Code moves.<br /><span>Production</span> follows.</h1>
-            <p>A cinematic deployment interface for your MERN stack. Push a UI change, let Jenkins build it, and watch the latest version arrive on your server.</p>
+        <section className="hero" id="aircraft">
+          <div className="hero-copy">
+            <div className="eyebrow"><span className="signal" /> NEXT GENERATION AUTONOMOUS FLIGHT</div>
+            <h1>Engineered<br />to see <em>beyond.</em></h1>
+            <p className="hero-lead">A professional autonomous aerial system built around precision mapping, AI navigation and cinematic imaging.</p>
+            <div className="hero-price">Starting at <strong>$2,499</strong></div>
             <div className="hero-actions">
-              <button className="primary-btn" onClick={runPipeline}>{running ? 'Pipeline running…' : 'Launch pipeline'} <span>↗</span></button>
-              <button className="text-btn" onClick={() => scrollTo('flow')}><i className="play">▶</i> Watch the flow</button>
+              <button className="button button-primary" onClick={() => scrollTo('preorder')}>Configure aircraft <Icon size={16}><path d="M5 12h13"/><path d="m13 6 6 6-6 6"/></Icon></button>
+              <button className="demo-link" onClick={() => scrollTo('intelligence')}><span className="play"><span /></span> Watch overview</button>
             </div>
-            <div className="hero-meta"><span>main branch</span><b /> <span>Auto build</span><b /> <span>Fedora + Nginx</span></div>
+            <div className="hero-foot"><span>AERON ONE</span><i /> <span>EDITION 2026</span></div>
           </div>
 
-          <div className="hero-visual" aria-label="Interactive deployment visualization">
-            <div className="orbit orbit-one" />
-            <div className="orbit orbit-two" />
-            <div className="pipeline-sculpture glass">
-              <div className="sculpture-top"><span className="traffic"><i /><i /><i /></span><small>production.pipeline</small><span className="tiny-live">LIVE</span></div>
-              <div className="terminal-lines">
-                <p><span>$</span> git push origin <b>main</b></p>
-                <p className="dim">✓ Source synchronized</p>
-                <p><span>$</span> npm run <b>build</b></p>
-                <p className="dim">✓ Optimized bundle generated</p>
-                <p><span>$</span> systemctl reload <b>nginx</b></p>
-                <p className="success">● Latest version is live</p>
+          <div className="hero-stage">
+            <div className="stage-halo" />
+            <div className="stage-grid" />
+            <div className="drone-shadow" />
+            <div className="drone" aria-label="Aeron autonomous aircraft illustration">
+              <div className="arm arm-left"><span className="rotor" /><span className="motor" /></div>
+              <div className="arm arm-right"><span className="rotor" /><span className="motor" /></div>
+              <div className="drone-body">
+                <span className="body-line" />
+                <span className="body-brand">AERON</span>
+                <span className="power-ring"><span /></span>
+                <span className="body-led" />
               </div>
-              <div className="sculpture-floor"><span>Build <b>01:24</b></span><span>SHA <b>8fd2c9</b></span><span>Region <b>LOCAL</b></span></div>
+              <div className="front-camera"><span /><i /></div>
+              <div className="landing-leg left" /><div className="landing-leg right" />
             </div>
-            <div className="floating-card api-float glass">
-              <div className="mini-icon">⌁</div><div><small>API</small><strong>{api.state}</strong></div><span className={'status-dot ' + api.state.toLowerCase()} />
+
+            <div className="spec-stack">
+              {specs.map(([value, label], index) => (
+                <button key={label} className={`spec ${activeSpec === index ? 'selected' : ''}`} onClick={() => setActiveSpec(index)}>
+                  <span className={`spec-icon spec-${index}`}>
+                    {index === 0 && <Icon size={17}><rect x="4" y="6" width="16" height="12" rx="2"/><path d="M8 6V4h8v2"/></Icon>}
+                    {index === 1 && <Icon size={17}><path d="M4 18 20 6"/><path d="M7 6h13v13"/></Icon>}
+                    {index === 2 && <Icon size={17}><rect x="3" y="6" width="18" height="12" rx="3"/><circle cx="12" cy="12" r="3"/></Icon>}
+                    {index === 3 && <Icon size={17}><path d="M12 3v4"/><path d="M12 17v4"/><path d="m4.9 4.9 2.8 2.8"/><path d="m16.3 16.3 2.8 2.8"/><circle cx="12" cy="12" r="4"/></Icon>}
+                  </span>
+                  <span><small>{label}</small><strong>{value}</strong></span>
+                </button>
+              ))}
             </div>
-            <div className="floating-card deploy-float glass"><span className="mini-check">✓</span><div><small>Deployment</small><strong>Automated</strong></div></div>
-          </div>
-        </section>
 
-        <section id="status" className="status-strip section-shell">
-          <div className="status-intro"><span className="section-number">01</span><p>Everything is designed around one simple loop: <strong>change → push → build → ship.</strong></p></div>
-          <div className="status-grid">
-            <div className="metric glass"><small>API CONNECTION</small><strong>{api.state}</strong><span className={'metric-line ' + api.state.toLowerCase()} /></div>
-            <div className="metric glass"><small>DEPLOY TARGET</small><strong>Nginx</strong><span className="metric-sub">Static React build</span></div>
-            <div className="metric glass"><small>BACKEND</small><strong>Node.js</strong><span className="metric-sub">Port 5000</span></div>
-          </div>
-        </section>
-
-        <section id="flow" className="flow-section section-shell">
-          <div className="section-heading"><div><span className="kicker">02 / AUTOMATION ENGINE</span><h2>A deployment flow<br />you can <span>feel.</span></h2></div><p>Interactive by design. Run the pipeline and each stage progresses through the exact path your application follows from GitHub to the production server.</p></div>
-          <div className="pipeline-track glass">
-            <div className="track-progress" style={{ width: active < 0 ? '0%' : `${Math.min(100, (active + 1) / stages.length * 100)}%` }} />
-            {stages.map((stage, index) => <button key={stage[1]} className={'flow-node ' + (index <= active ? 'done ' : '') + (index === active && running ? 'current' : '')} onClick={() => setActive(index)}>
-              <span className="node-index">{index < active ? '✓' : stage[0]}</span><strong>{stage[1]}</strong><small>{index < active ? 'Complete' : index === active ? (running ? 'Processing' : 'Ready') : stage[2]}</small>
-            </button>)}
-          </div>
-          <div className="pipeline-controls"><button className="secondary-btn" onClick={runPipeline}>{running ? 'Running deployment…' : 'Simulate deployment'}</button><span>{active >= 0 ? `${Math.min(active + 1, stages.length)} of ${stages.length} stages active` : 'Waiting for deployment command'}</span></div>
-        </section>
-
-        <section id="stack" className="stack-section section-shell">
-          <div className="stack-layout">
-            <div className="stack-copy"><span className="kicker">03 / THE FOUNDATION</span><h2>One stack.<br /><span>Zero friction.</span></h2><p>Four technologies, one clean production workflow. Every layer has a purpose, and every deployment passes through the same reliable path.</p><button className="text-btn dark-text" onClick={() => setMode(mode === 'overview' ? 'detail' : 'overview')}>{mode === 'overview' ? 'Explore architecture' : 'Return to overview'} <span>↗</span></button></div>
-            <div className={'stack-panel ' + mode}>
-              {stack.map((item, index) => <button className={'stack-card glass ' + item.tone} key={item.name} onClick={() => setMode('detail')}><span className="stack-mark">{item.mark}</span><div><small>0{index + 1}</small><strong>{item.name}</strong><p>{item.detail}</p></div><i>↗</i></button>)}
+            <div className="overview-card">
+              <div className="overview-image">
+                <div className="mountain mountain-one" /><div className="mountain mountain-two" /><div className="sun" />
+                <button onClick={() => scrollTo('intelligence')} className="overview-play"><span /></button>
+              </div>
+              <div className="overview-meta"><span>WATCH OVERVIEW</span><b>02:15</b></div>
             </div>
           </div>
         </section>
 
-        <section className="api-section section-shell">
-          <div className="api-window glass">
-            <div className="api-copy"><span className="kicker"><span className="live-dot" /> LIVE SERVICE</span><h2>Your backend is<br /><span>not a mystery.</span></h2><p>The frontend checks the production API through <code>/api/health</code>. Use the control below to verify the live connection without leaving the page.</p><button className="primary-btn" onClick={checkApi}>Check API <span>↗</span></button></div>
-            <div className="api-console"><div className="console-bar"><span>GET</span><code>/api/health</code><b>{api.state === 'Online' ? '200 OK' : api.state}</b></div><pre>{api.data ? JSON.stringify(api.data, null, 2) : '{\n  "status": "waiting"\n}'}</pre></div>
+        <section className="trust-row section" aria-label="Trusted by innovators">
+          <span>TRUSTED BY INNOVATORS WORLDWIDE</span>
+          <div className="logos"><b>SKYDIO</b><b>BLACKSTONE</b><b>NATIONAL<br />GEOGRAPHIC</b><b>RED BULL</b><b>NVIDIA</b><b>PIX4D</b></div>
+        </section>
+
+        <section className="intelligence section" id="intelligence">
+          <div className="section-top">
+            <div><div className="eyebrow">01 / AWARENESS ENGINE</div><h2>It doesn't just fly.<br /><em>It understands.</em></h2></div>
+            <p>Every surface, object and route becomes data. AERON turns that data into decisions in real time—without asking you to micromanage the aircraft.</p>
+          </div>
+
+          <div className="intelligence-grid">
+            <article className="feature feature-dark">
+              <div className="feature-orb"><div className="orb-core" /><div className="orb-ring ring-a" /><div className="orb-ring ring-b" /><span className="orb-pulse" /></div>
+              <div className="feature-copy"><span>01</span><h3>Spatial intelligence</h3><p>Build a living 3D map while you move. Obstacles become predictable, routes become adaptive.</p></div>
+            </article>
+            <article className="feature feature-image">
+              <div className="visor"><div className="visor-glow" /><div className="visor-lines" /></div>
+              <div className="feature-copy"><span>02</span><h3>Vision system</h3><p>Eight synchronized sensors read depth, motion and detail from every direction.</p></div>
+            </article>
+            <article className="feature feature-wide">
+              <div className="signal-ui"><div className="signal-card"><span>MISSION</span><strong>COASTAL SURVEY</strong><small>12.4 km · autonomous</small></div><div className="signal-path"><i /><i /><i /><i /></div></div>
+              <div className="feature-copy"><span>03</span><h3>Mission autonomy</h3><p>Set the intent. AERON handles the route, corrections and return-to-home logic.</p></div>
+            </article>
           </div>
         </section>
 
-        <section className="closing section-shell">
-          <div><span className="kicker">READY WHEN YOU ARE</span><h2>Change the UI.<br /><span>Ship the future.</span></h2></div><button className="mega-button" onClick={runPipeline}><span>{running ? 'Deploying your build' : 'Run the deployment'}</span><i>↗</i></button>
+        <section className="deployment section" id="deployment">
+          <div className="deployment-head">
+            <div><div className="eyebrow">02 / YOUR PRODUCTION ENGINE</div><h2>From code to<br /><em>airborne.</em></h2></div>
+            <div className="deployment-status"><span className={`status-dot ${api.state.toLowerCase()}`} /><div><small>LIVE API</small><strong>{api.state}</strong></div><button onClick={checkApi} aria-label="Refresh API status"><Icon size={16}><path d="M20 11a8 8 0 0 0-14.9-4"/><path d="M4 4v4h4"/><path d="M4 13a8 8 0 0 0 14.9 4"/><path d="M20 20v-4h-4"/></Icon></button></div>
+          </div>
+
+          <div className="deployment-shell">
+            <div className="deployment-visual">
+              <div className="terminal">
+                <div className="terminal-top"><span><i /><i /><i /></span><small>production.pipeline</small><b>{running ? 'RUNNING' : 'READY'}</b></div>
+                <div className="terminal-body">
+                  <p><span>$</span> git push origin <strong>main</strong></p>
+                  <p className="terminal-dim">✓ source synchronized</p>
+                  <p><span>$</span> npm run <strong>build</strong></p>
+                  <p className="terminal-dim">✓ optimized React bundle</p>
+                  <p><span>$</span> release <strong>nginx</strong></p>
+                  <p className="terminal-success">● {api.state === 'Online' ? 'production is healthy' : 'waiting for health check'}</p>
+                </div>
+              </div>
+              <div className="floating-chip chip-api"><span className="chip-icon"><Icon size={15}><path d="M12 3v18"/><path d="M5 8h14"/><path d="M5 16h14"/></Icon></span><span><small>API</small><strong>Port 5000</strong></span></div>
+              <div className="floating-chip chip-nginx"><span className="chip-icon"><Icon size={15}><path d="m5 8 7-5 7 5-7 5-7-5Z"/><path d="m5 16 7 5 7-5"/></Icon></span><span><small>EDGE</small><strong>Nginx live</strong></span></div>
+            </div>
+
+            <div className="pipeline-list">
+              {pipeline.map((stage, index) => (
+                <button key={stage.id} className={`pipeline-item ${index <= activeStage ? 'complete' : ''} ${index === activeStage && running ? 'current' : ''}`} onClick={() => setActiveStage(index)}>
+                  <span className="pipeline-number">{index <= activeStage ? '✓' : stage.id}</span>
+                  <span className="pipeline-name"><strong>{stage.title}</strong><small>{stage.sub}</small></span>
+                  <code>{stage.code}</code>
+                  <Icon size={15}><path d="M5 12h13"/><path d="m13 6 6 6-6 6"/></Icon>
+                </button>
+              ))}
+              <button className="deploy-button" onClick={runPipeline}>{running ? 'Pipeline running…' : 'Run deployment'} <Icon size={17}><path d="M5 12h13"/><path d="m13 6 6 6-6 6"/></Icon></button>
+            </div>
+          </div>
+        </section>
+
+        <section className="manifesto section">
+          <div className="manifesto-line" />
+          <div className="manifesto-content"><span className="eyebrow">03 / THE DIFFERENCE</span><h2>Less interface.<br /><em>More intelligence.</em></h2><p>Hardware that disappears behind the experience. Software that turns complexity into a single, calm decision.</p></div>
+          <div className="manifesto-orbit"><span /><span /><span /></div>
+        </section>
+
+        <section className="preorder section" id="preorder">
+          <div className="preorder-panel">
+            <div className="preorder-copy"><div className="eyebrow">AERON ONE / 2026 EDITION</div><h2>Make the sky<br /><em>your canvas.</em></h2><p>Early access includes the aircraft, autonomous flight suite and priority mission updates.</p><div className="preorder-price"><strong>$2,499</strong><span>or $208/mo</span></div><button className="button button-primary">Reserve your aircraft <Icon size={16}><path d="M5 12h13"/><path d="m13 6 6 6-6 6"/></Icon></button></div>
+            <div className="preorder-object"><div className="mini-drone"><span className="mini-wing left" /><span className="mini-wing right" /><div /></div><div className="object-caption"><span>ONE / 2026</span><b>PRECISION MADE</b></div></div>
+          </div>
         </section>
       </main>
 
-      <footer><div className="wordmark"><span className="wordmark-dot" />MERIDIEN</div><p>MERN • JENKINS • NGINX • CONTINUOUS DELIVERY</p><span>© 2026</span></footer>
+      <footer>
+        <div className="footer-brand"><span className="brand-symbol"><span /><span /></span><strong>AERON</strong></div>
+        <div className="footer-links"><button onClick={() => scrollTo('aircraft')}>Aircraft</button><button onClick={() => scrollTo('intelligence')}>Technology</button><button onClick={() => scrollTo('deployment')}>Deployment</button></div>
+        <span className="footer-note">AUTONOMOUS SYSTEMS / 2026</span>
+      </footer>
     </div>
   );
 }
